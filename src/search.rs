@@ -133,7 +133,6 @@ fn alpha_beta(
                 tt::EntryType::UpperBound => beta = std::cmp::min(beta, entry.score),
             }
 
-            // check for invalid bounds (is this actually needed?)
             if alpha >= beta {
                 return match entry.entry_type {
                     EntryType::LowerBound => beta,

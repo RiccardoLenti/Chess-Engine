@@ -114,7 +114,7 @@ fn handle_position(command: Vec<String>) -> Board {
             {
                 res.make_move(move_in_legal_moves);
             } else {
-                panic!("move in position moves was not found");
+                panic!("move in position command was not found");
             }
         }
         res.generate_legal_moves();

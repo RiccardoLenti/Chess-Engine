@@ -318,17 +318,8 @@ fn generate_moves_for_pinned_pieces(
     board: &Board,
     move_list: &mut MoveList,
 ) {
-    //let us_pieces_bb = board.get_pieces_bb()[us_color];
-
     for &(pinned_bb, restriction_mask) in pinned_pieces {
-        //let mut pinned_piece: Option<Piece> = None;
         let pinned_piece = board.get_piece_at(pinned_bb.bitscan());
-        //for (type_iter, bb) in us_pieces_bb.iter().enumerate() {
-        //    if bb.contains_bit(pinned_bb) {
-        //        pinned_piece = Some(Piece::new(PieceType::from(type_iter), us_color));
-        //        break;
-        //    }
-        //}
 
         if let Some(piece) = pinned_piece {
             generate_moves_for_piece(
@@ -342,37 +333,6 @@ fn generate_moves_for_pinned_pieces(
         }
     }
 } 
-
-
-/*fn generate_moves_for_pinned_pieces(
-    pinned_pieces: &[(u64, u64)],
-    us_color: PieceColor,
-    board: &Board,
-    move_list: &mut MoveList,
-) {
-    let us_pieces_bb = board.get_pieces_bb()[us_color];
-
-    for &(pinned_bb, restriction_mask) in pinned_pieces {
-        let mut pinned_piece: Option<Piece> = None;
-        for (type_iter, bb) in us_pieces_bb.iter().enumerate() {
-            if bb.contains_bit(pinned_bb) {
-                pinned_piece = Some(Piece::new(PieceType::from(type_iter), us_color));
-                break;
-            }
-        }
-
-        if let Some(piece) = pinned_piece {
-            generate_moves_for_piece(
-                piece.get_type(),
-                us_color,
-                pinned_bb,
-                restriction_mask,
-                board,
-                move_list,
-            );
-        }
-    }
-} */
 
 fn generate_knights_moves(
     mut knights_bb: u64,

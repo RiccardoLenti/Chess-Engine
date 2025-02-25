@@ -90,7 +90,7 @@ fn handle_position(command: Vec<String>) -> Board {
             let mut found_moves = false;
             for (index, token) in command[1..].iter().enumerate() {
                 if token.as_str() == "moves" {
-                    moves_index = index;
+                    moves_index = index + 1;
                     found_moves = true;
                     break;
                 }

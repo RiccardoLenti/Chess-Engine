@@ -18,6 +18,7 @@ use crate::{
 
 const PIECE_WEIGHTS: [i32; 6] = [500, 330, 900, 300, 100, 0];
 const COLOR_MULTIPLIERS: [i32; 2] = [1, -1];
+const MATE_THRESHOLD: i32 = i32::MAX - 50;
 
 pub fn iterative_deepening_search(
     board: &mut Board,
@@ -37,13 +38,20 @@ pub fn iterative_deepening_search(
         if let Some(search_res) = search_res_opt {
             best_search_res = search_res;
             best_depth = current_depth;
+
+            if best_search_res.1 >= MATE_THRESHOLD {
+                break;
+            }
         } else {
             break;
         }
     }
 
     println!("info depth {} score cp {}", best_depth, best_search_res.1);
-    println!("bestmove {}", best_search_res.0.to_long_algebraic_notation());
+    println!(
+        "bestmove {}",
+        best_search_res.0.to_long_algebraic_notation()
+    );
 }
 
 fn alpha_beta_root_node(
@@ -54,9 +62,8 @@ fn alpha_beta_root_node(
     think_time: Duration,
     stop_flag: &Arc<AtomicBool>,
 ) -> Option<(Move, i32)> {
-    let mut max_eval = i32::MIN;
-    let mut alpha = i32::MIN + 1;
-    let beta = i32::MAX - 1;
+    let mut alpha = -MATE_THRESHOLD;
+    let beta = MATE_THRESHOLD;
     let mut best_move: Option<Move> = None;
 
     tt.increment_age();
@@ -92,17 +99,16 @@ fn alpha_beta_root_node(
             return None;
         }
 
-        if this_move_eval > max_eval {
-            max_eval = this_move_eval;
+        if this_move_eval > alpha {
             best_move = Some(m);
             alpha = this_move_eval;
         }
     }
 
-    // store best move in tt and return the tuple (m, max_eval)
+    // store best move in tt and return the tuple (m, alpha)
     best_move.map(|m| {
-        tt.store(zobrist_key, max_depth, max_eval, EntryType::Exact, Some(m));
-        (m, max_eval)
+        tt.store(zobrist_key, max_depth, alpha, EntryType::Exact, Some(m));
+        (m, alpha)
     })
 }
 
@@ -143,20 +149,20 @@ fn alpha_beta(
         }
     }
 
-    if depth == 0 {
-        return eval(board);
-    }
-
-    let mut max_eval = i32::MIN + 1;
+    let mut max_eval = -MATE_THRESHOLD;
     let mut best_move: Option<Move> = None;
     let mut legal_moves = generate_legal_moves(board);
 
     if legal_moves.len() == 0 {
         if board.is_in_check() {
-            return -i32::MAX + (depth as i32);
+            return max_eval - depth as i32; // shorter mates are preferred
         } else {
             return 0;
         }
+    }
+
+    if depth == 0 {
+        return eval(board);
     }
 
     let tt_best_move = tt_entry.and_then(|entry| entry.best_move);
@@ -208,7 +214,7 @@ fn alpha_beta(
 
     tt.store(zobrist_key, depth, max_eval, entry_type, best_move);
 
-    alpha
+    max_eval
 }
 
 fn eval(board: &Board) -> i32 {

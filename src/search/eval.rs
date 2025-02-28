@@ -173,29 +173,28 @@ pub fn eval(board: &Board) -> i32 {
 
     let mut material_score = 0i32;
     let mut positional_score = 0i32;
-    let mut total_mateial = 0i32;
+    let mut total_material = 0i32;
 
     let (white_bb, black_bb, _, _) = board.get_us_enemy_bitboards(PieceColor::White);
 
     for (piece_type, bb) in white_bb.iter().enumerate() {
         let piece_count = bb.count_ones() as i32;
         material_score += PIECE_WEIGHTS[piece_type] * piece_count;
-        total_mateial += PIECE_WEIGHTS[piece_type] * piece_count;
+        total_material += PIECE_WEIGHTS[piece_type] * piece_count;
     }
 
     for (piece_type, bb) in black_bb.iter().enumerate() {
         let piece_count = bb.count_ones() as i32;
         material_score -= PIECE_WEIGHTS[piece_type] * piece_count;
-        total_mateial += PIECE_WEIGHTS[piece_type] * piece_count;
+        total_material += PIECE_WEIGHTS[piece_type] * piece_count;
     }
 
-    let endgame_weight: f32 = (TOTAL_WEIGHT - total_mateial) as f32 / TOTAL_WEIGHT as f32;
+    let endgame_weight: f32 = (TOTAL_WEIGHT - total_material) as f32 / TOTAL_WEIGHT as f32;
 
     // spaghetti code
-    for (piece_type, bb) in white_bb.iter().enumerate() {
-        let mut bb_copy = *bb;
-        while bb_copy != 0 {
-            let index = bb_copy.bitscan_reset() ^ 56; // ^ 56 because it needs to be flipped because it's white
+    for (piece_type, mut bb) in white_bb.into_iter().enumerate() {
+        while bb != 0 {
+            let index = bb.bitscan_reset() ^ 56; // ^ 56 because it needs to be flipped because it's white
 
             let mg_score = PIECE_TABLES[piece_type][0][index as usize] as f32;
             let eg_score = PIECE_TABLES[piece_type][1][index as usize] as f32;
@@ -205,10 +204,9 @@ pub fn eval(board: &Board) -> i32 {
         }
     }
 
-    for (piece_type, bb) in black_bb.iter().enumerate() {
-        let mut bb_copy = *bb;
-        while bb_copy != 0 {
-            let index = bb_copy.bitscan_reset();
+    for (piece_type, mut bb) in black_bb.into_iter().enumerate() {
+        while bb != 0 {
+            let index = bb.bitscan_reset();
 
             let mg_score = PIECE_TABLES[piece_type][0][index as usize] as f32;
             let eg_score = PIECE_TABLES[piece_type][1][index as usize] as f32;

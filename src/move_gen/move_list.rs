@@ -42,7 +42,7 @@ impl MoveList {
 
     #[inline]
     pub fn index(&self, i: usize) -> Move {
-        unsafe { *self.list.get_unchecked(i as usize) }
+        unsafe { *self.list.get_unchecked(i) }
     }
 
     pub fn swap(&mut self, index1: usize, index2: usize) {

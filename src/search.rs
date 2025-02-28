@@ -1,5 +1,6 @@
 pub mod perft;
 pub mod tt;
+mod eval;
 
 use std::{
     sync::{
@@ -13,11 +14,9 @@ use tt::{EntryType, TranspositionTable};
 
 use crate::{
     board::Board,
-    move_gen::{chess_move::Move, generate_legal_moves, move_list::MoveList},
+    move_gen::{chess_move::Move, generate_legal_moves},
 };
 
-const PIECE_WEIGHTS: [i32; 6] = [500, 330, 900, 300, 100, 0];
-const COLOR_MULTIPLIERS: [i32; 2] = [1, -1];
 const MATE_THRESHOLD: i32 = i32::MAX - 50;
 
 pub fn iterative_deepening_search(
@@ -72,7 +71,7 @@ fn alpha_beta_root_node(
     let tt_best_move = tt.probe(zobrist_key).and_then(|entry| entry.best_move);
 
     let mut legal_moves = generate_legal_moves(board);
-    order_moves(&mut legal_moves, board, tt_best_move);
+    eval::order_moves(&mut legal_moves, board, tt_best_move);
 
     for m in legal_moves.iter() {
         board.make_move(m);
@@ -162,11 +161,11 @@ fn alpha_beta(
     }
 
     if depth == 0 {
-        return eval(board);
+        return eval::eval(board);
     }
 
     let tt_best_move = tt_entry.and_then(|entry| entry.best_move);
-    order_moves(&mut legal_moves, board, tt_best_move);
+    eval::order_moves(&mut legal_moves, board, tt_best_move);
 
     for m in legal_moves.iter() {
         board.make_move(m);
@@ -217,65 +216,4 @@ fn alpha_beta(
     max_eval
 }
 
-fn eval(board: &Board) -> i32 {
-    let mut res = 0;
 
-    for (piece_color, bbs_ar) in board.get_pieces_bb().iter().enumerate() {
-        for (piece_type, bb) in bbs_ar.iter().enumerate() {
-            res +=
-                PIECE_WEIGHTS[piece_type] * COLOR_MULTIPLIERS[piece_color] * bb.count_ones() as i32;
-        }
-    }
-
-    res * COLOR_MULTIPLIERS[board.get_color_to_move()]
-}
-
-fn order_moves(moves: &mut MoveList, board: &Board, best_tt_move: Option<Move>) {
-    let mut scores: Vec<i32> = vec![0; moves.len() as usize];
-
-    for (i, m) in moves.iter().enumerate() {
-        if let Some(tt_move) = best_tt_move {
-            if m == tt_move {
-                scores[i] = i32::MAX;
-                continue; // skip otherwise it's overwritten or may overflow
-            }
-        }
-
-        if let Some(captured_piece) = board.get_piece_at(m.get_to()) {
-            scores[i] = PIECE_WEIGHTS[captured_piece.get_type()] * 10
-                - PIECE_WEIGHTS[board.get_piece_at(m.get_from()).unwrap().get_type()];
-        }
-
-        if m.is_promotion() {
-            scores[i] += PIECE_WEIGHTS[m.get_promotion_type()];
-        }
-    }
-
-    quick_sort(moves, &mut scores, 0, moves.len() as isize - 1);
-}
-
-fn quick_sort(moves: &mut MoveList, scores: &mut Vec<i32>, low: isize, high: isize) {
-    if low < high {
-        let pivot_index = partition(moves, scores, low, high);
-        quick_sort(moves, scores, low, pivot_index - 1);
-        quick_sort(moves, scores, pivot_index + 1, high);
-    }
-}
-
-fn partition(moves: &mut MoveList, scores: &mut [i32], low: isize, high: isize) -> isize {
-    let pivot_score = scores[high as usize];
-    let mut i = low - 1;
-
-    for j in low..high {
-        if scores[j as usize] > pivot_score {
-            i += 1;
-            moves.swap(i as usize, j as usize);
-            scores.swap(i as usize, j as usize);
-        }
-    }
-
-    moves.swap((i + 1) as usize, high as usize);
-    scores.swap((i + 1) as usize, high as usize);
-
-    i + 1
-}

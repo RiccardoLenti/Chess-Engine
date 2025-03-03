@@ -9,7 +9,6 @@ use crate::move_gen::{
     chess_move::Move, generate_attacks, generate_legal_moves, move_list::MoveList,
 };
 use std::collections::HashMap;
-use rustc_hash::FxHashMap;
 
 #[derive(Debug)]
 pub struct Board {
@@ -21,7 +20,6 @@ pub struct Board {
     pub current_gamestate: Gamestate,
     gamestate_stack: Vec<Gamestate>,
     current_zobrist_key: u64,
-    position_history: FxHashMap<u64, usize>,
 }
 
 impl Board {
@@ -97,7 +95,6 @@ impl Board {
             current_gamestate: Gamestate::new(fen_string_splits[2], fen_string_splits[3]),
             gamestate_stack: Vec::with_capacity(50),
             current_zobrist_key: 0,
-            position_history: FxHashMap::default(),
         };
         res.current_zobrist_key = zobrist::init_zobrist_key(&res);
         res.current_gamestate.zobrist_key = res.current_zobrist_key;
@@ -254,10 +251,6 @@ impl Board {
 
         self.current_zobrist_key ^= zobrist::color_to_move();
         self.current_gamestate.zobrist_key = self.current_zobrist_key;
-        *self
-            .position_history
-            .entry(self.current_zobrist_key)
-            .or_insert(0) += 1;
     }
 
     /// THIS METHOD CHANGES COLOR_TO_MOVE
@@ -266,11 +259,6 @@ impl Board {
         let land_index = move_to_unmake.get_to();
         let mut moved_piece = self.get_piece_at(land_index).unwrap();
         let moved_color = moved_piece.get_color();
-
-        *self
-            .position_history
-            .get_mut(&self.current_zobrist_key)
-            .unwrap() -= 1;
 
         if move_to_unmake.is_promotion() {
             let promotion_type = move_to_unmake.get_promotion_type();
@@ -354,11 +342,28 @@ impl Board {
         self.current_zobrist_key
     }
 
-    #[inline]
     pub fn is_threefold_repetition(&self) -> bool {
-        self.position_history
-            .get(&self.current_zobrist_key)
-            .is_some_and(|&count| count >= 3)
+        let mut cnt = 0;
+        let mut break_next = false;
+
+        for gamestate in self.gamestate_stack.iter().rev() {
+            if break_next {
+                break;
+            }
+
+            if gamestate.halfmove_clock == 0 {
+                break_next = true;
+            }
+
+            if gamestate.zobrist_key == self.current_zobrist_key {
+                cnt += 1;
+                if cnt == 2 {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     #[inline]

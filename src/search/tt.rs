@@ -73,6 +73,7 @@ impl TranspositionTable {
         });
     }
 
+    #[inline]
     pub fn probe(&self, key: u64) -> Option<&TTEntry> {
         let idx = self.index(key);
 

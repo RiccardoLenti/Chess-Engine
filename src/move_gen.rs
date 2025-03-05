@@ -3,10 +3,10 @@ pub mod move_list;
 
 use crate::{
     board::{
-        bitboard::{print_bitboard, Bitmanip},
+        Board,
+        bitboard::{Bitmanip, print_bitboard},
         gamestate::Gamestate,
         piece::*,
-        Board,
     },
     consts::CONSTS,
 };
@@ -109,19 +109,21 @@ pub fn generate_legal_moves(board: &Board) -> MoveList {
         );
     }
 
-    if us_pieces_bb[PieceType::King] != 0 {
-        generate_king_moves(
-            us_pieces_bb[PieceType::King],
-            us_color_bb,
-            attacks_bb,
-            &mut res,
-        );
-    }
+    generate_king_moves(
+        us_pieces_bb[PieceType::King],
+        us_color_bb,
+        attacks_bb,
+        &mut res,
+    );
 
     res
 }
 
-pub fn generate_attacks(pieces_bb: [u64; 6], occupied_bb: u64, piece_color: PieceColor) -> [u64; 6] {
+pub fn generate_attacks(
+    pieces_bb: [u64; 6],
+    occupied_bb: u64,
+    piece_color: PieceColor,
+) -> [u64; 6] {
     let mut res = [0u64; 6];
 
     res[PieceType::Rook] = generate_rook_attacks(pieces_bb[PieceType::Rook], occupied_bb);
@@ -332,7 +334,7 @@ fn generate_moves_for_pinned_pieces(
             );
         }
     }
-} 
+}
 
 fn generate_knights_moves(
     mut knights_bb: u64,

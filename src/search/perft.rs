@@ -35,7 +35,7 @@ fn perft_test_r(depth: u8, board: &mut Board, max_depth: u8, stop: &Arc<AtomicBo
         return 1;
     }
 
-    let legal_moves = generate_legal_moves(board);
+    let legal_moves = generate_legal_moves(board, true);
     if depth == 1 {
         return legal_moves.len() as u128;
     }

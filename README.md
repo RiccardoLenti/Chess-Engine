@@ -9,5 +9,6 @@ This engine uses a basic subset of the UCI protocol. If you want to play against
 - Hyperbola Quintessence move generation for sliding pieces
 - Basic Transposition Table with Zobrist keys
 - Alpha-Beta search with iterative deepening
+- Quiescence search for captures
 - Position evaluation with material counting and Piece-Squares tables
 - Very basic move ordering with Hash Move, MVV-LVA, and promotions priority

@@ -6,8 +6,9 @@ mod search;
 use std::{
     io,
     sync::{
+        Arc,
         atomic::{AtomicBool, Ordering},
-        mpsc, Arc,
+        mpsc,
     },
     thread::{self},
 };
@@ -39,6 +40,10 @@ fn main() {
             "perft" => {
                 let depth = uci_command[1].parse::<u8>().unwrap();
                 perft_test(depth, &mut board, &stop_flag);
+            }
+            "captures" => {
+                let captures = generate_legal_moves(&board, false);
+                println!("captures: {}", captures.len());
             }
             "go" => {
                 handle_go(uci_command[1..].to_vec(), &mut board, &stop_flag);
@@ -106,11 +111,15 @@ fn handle_position(command: Vec<String>) -> Board {
         }
     }
 
-    if  moves_index != 0 && command.len() > moves_index + 1 && command[moves_index].as_str() == "moves" {
+    if moves_index != 0
+        && command.len() > moves_index + 1
+        && command[moves_index].as_str() == "moves"
+    {
         for ucimove in &command[(moves_index + 1)..] {
             let chess_move = Move::from(ucimove.as_str());
-            if let Some(move_in_legal_moves) =
-                generate_legal_moves(&res).iter().find(|&m| m == chess_move)
+            if let Some(move_in_legal_moves) = generate_legal_moves(&res, true)
+                .iter()
+                .find(|&m| m == chess_move)
             {
                 res.make_move(move_in_legal_moves);
             } else {

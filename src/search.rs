@@ -1,6 +1,6 @@
+mod eval;
 pub mod perft;
 pub mod tt;
-mod eval;
 
 use std::{
     sync::{
@@ -70,7 +70,7 @@ fn alpha_beta_root_node(
     let zobrist_key = board.get_zobrist_key();
     let tt_best_move = tt.probe(zobrist_key).and_then(|entry| entry.best_move);
 
-    let mut legal_moves = generate_legal_moves(board);
+    let mut legal_moves = generate_legal_moves(board, true);
     eval::order_moves(&mut legal_moves, board, tt_best_move);
 
     for m in legal_moves.iter() {
@@ -150,7 +150,7 @@ fn alpha_beta(
 
     let mut max_eval = -MATE_THRESHOLD;
     let mut best_move: Option<Move> = None;
-    let mut legal_moves = generate_legal_moves(board);
+    let mut legal_moves = generate_legal_moves(board, true);
 
     if legal_moves.len() == 0 {
         if board.is_in_check() {
@@ -161,7 +161,7 @@ fn alpha_beta(
     }
 
     if depth == 0 {
-        return eval::eval(board);
+        return quiescence_search(board, alpha, beta, now, think_time, stop_flag);
     }
 
     let tt_best_move = tt_entry.and_then(|entry| entry.best_move);
@@ -216,4 +216,48 @@ fn alpha_beta(
     max_eval
 }
 
+fn quiescence_search(
+    board: &mut Board,
+    mut alpha: i32,
+    beta: i32,
+    now: Instant,
+    think_time: Duration,
+    stop_flag: &Arc<AtomicBool>,
+) -> i32 {
+    if now.elapsed() >= think_time || stop_flag.load(Ordering::SeqCst) {
+        return 0;
+    }
 
+    let stand_pat = eval::eval(board);
+
+    if stand_pat >= beta {
+        return stand_pat;
+    }
+
+    if stand_pat > alpha {
+        alpha = stand_pat;
+    }
+
+    let mut captures = generate_legal_moves(board, false);
+    eval::order_moves(&mut captures, board, None);
+
+    for m in captures.iter() {
+        board.make_move(m);
+        let this_move_evaluation =
+            if board.is_threefold_repetition() || board.draw_by_fifty_moves_rule() {
+                0
+            } else {
+                -quiescence_search(board, -beta, -alpha, now, think_time, stop_flag)
+            };
+
+        board.unmake_move(m);
+
+        if this_move_evaluation >= beta {
+            return this_move_evaluation;
+        }
+
+        alpha = std::cmp::max(this_move_evaluation, alpha);
+    }
+
+    alpha
+}

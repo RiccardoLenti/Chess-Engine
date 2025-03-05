@@ -316,7 +316,7 @@ impl Board {
     }
 
     pub fn generate_legal_moves(&mut self) {
-        self.legal_moves = generate_legal_moves(self);
+        self.legal_moves = generate_legal_moves(self, true);
     }
 
     #[inline]

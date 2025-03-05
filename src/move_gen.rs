@@ -13,7 +13,7 @@ use crate::{
 
 use self::{chess_move::Move, move_list::MoveList};
 
-pub fn generate_legal_moves(board: &Board) -> MoveList {
+pub fn generate_legal_moves(board: &Board, generate_quiet_moves: bool) -> MoveList {
     let mut res = MoveList::new();
     let us_color = board.get_color_to_move();
     let enemy_color = !us_color;
@@ -52,6 +52,9 @@ pub fn generate_legal_moves(board: &Board) -> MoveList {
         };
 
     let mut legal_squares = capture_mask | block_mask;
+    if !generate_quiet_moves {
+        legal_squares &= enemy_color_bb;
+    }
 
     if num_attackers <= 1 {
         let pinned_pieces = recognize_pinned_pieces(king_bit, board, us_color);
@@ -61,17 +64,25 @@ pub fn generate_legal_moves(board: &Board) -> MoveList {
             .fold(0, |acc, bb| acc | bb);
 
         if num_attackers == 0 {
-            generate_moves_for_pinned_pieces(&pinned_pieces, us_color, board, &mut res);
-
-            generate_castles(
-                king_bit,
-                us_pieces_bb[PieceType::Rook],
-                us_color_bb | enemy_color_bb,
-                attacks_bb,
+            generate_moves_for_pinned_pieces(
+                &pinned_pieces,
                 us_color,
-                board.current_gamestate,
+                board,
                 &mut res,
-            )
+                generate_quiet_moves,
+            );
+
+            if generate_quiet_moves {
+                generate_castles(
+                    king_bit,
+                    us_pieces_bb[PieceType::Rook],
+                    us_color_bb | enemy_color_bb,
+                    attacks_bb,
+                    us_color,
+                    board.current_gamestate,
+                    &mut res,
+                );
+            }
         }
 
         // Sliding Piece Moves are generated using Hyperbola Quintessence
@@ -109,11 +120,18 @@ pub fn generate_legal_moves(board: &Board) -> MoveList {
         );
     }
 
+    let legal_squares_for_king = if generate_quiet_moves {
+        0xFFFFFFFFFFFFFFFF
+    } else {
+        enemy_color_bb
+    };
+
     generate_king_moves(
         us_pieces_bb[PieceType::King],
         us_color_bb,
         attacks_bb,
         &mut res,
+        legal_squares_for_king,
     );
 
     res
@@ -319,9 +337,16 @@ fn generate_moves_for_pinned_pieces(
     us_color: PieceColor,
     board: &Board,
     move_list: &mut MoveList,
+    generate_quiet_moves: bool,
 ) {
-    for &(pinned_bb, restriction_mask) in pinned_pieces {
+    let enemy_bb = board.get_us_enemy_colors_bb(us_color).1;
+
+    for &(pinned_bb, mut restriction_mask) in pinned_pieces {
         let pinned_piece = board.get_piece_at(pinned_bb.bitscan());
+
+        if !generate_quiet_moves {
+            restriction_mask &= enemy_bb;
+        }
 
         if let Some(piece) = pinned_piece {
             generate_moves_for_piece(
@@ -355,9 +380,11 @@ fn generate_king_moves(
     us_color_bb: u64,
     attacks_bb: u64,
     move_list: &mut MoveList,
+    legal_squares_bb: u64,
 ) {
     let index = king_bb.bitscan_reset();
-    let moves_bb = CONSTS::KING_TABLE[index as usize] & !us_color_bb & !attacks_bb;
+    let moves_bb =
+        CONSTS::KING_TABLE[index as usize] & !us_color_bb & !attacks_bb & legal_squares_bb;
 
     move_list.append_bb(moves_bb, index);
 }
